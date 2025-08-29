@@ -1,5 +1,4 @@
 # GameFinder - Sistema de Recomendação de Jogos
-# GameFinder - Sistema de Recomendação de Jogos
 
 ## Sobre o Projeto
 
