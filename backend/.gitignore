@@ -1,0 +1,10 @@
+/vendor
+.env
+/node_modules
+/storage/*.key
+/public/hot
+/public/storage
+/.idea
+*.bak
+/.phpunit.result.cache
+/artisan.sqlite
