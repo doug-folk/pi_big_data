@@ -32,10 +32,14 @@ O projeto é construído com uma stack moderna e distribuída, organizada em tr�
 ## Estrutura do Projeto
 
 O projeto é organizado em uma arquitetura de monorepo, com cada componente residindo em seu próprio diretório.
+
         /pi_big_data/
+        
         ├── /backend/
+        
         │   ├── ... (API principal em Laravel)
         ├── /recommender-service/
+        
         │   ├── ... (Serviço de recomendação em Python)
         └── /frontend/
             └── ... (Interface do usuário em React)
