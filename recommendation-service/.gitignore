@@ -17,3 +17,6 @@ node_modules/
 __pycache__
 *.pyc
 .env
+
+recommendation-service/etl/data/*.json
+recommendation-service/etl/data/*.csv
