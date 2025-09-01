@@ -146,6 +146,16 @@ npm install
 
 ##4. Populando o Banco de Dados (ETL)
 
+#obs: Os datasets são muito grandes para serem versionados. Faça o download manual dos arquivos e coloque-os na pasta correta: 
+
+```bash
+/pi_big_data/recommendation-service/etl/data/
+```
+
+- `meta_Video_Games.json` (https://www.kaggle.com/datasets/gabrielfreddi/amazon-reviews-de-vdeo-games)
+- `Video_Games.json` (https://www.kaggle.com/datasets/gabrielfreddi/amazon-reviews-de-vdeo-games)
+- `steam-games-complete-dataset.csv` (https://www.kaggle.com/datasets/trolukovich/steam-games-complete-dataset)
+
 1. Crie a estrutura do banco (Migrations do Laravel):
 
 # Dentro da pasta backend-api/
