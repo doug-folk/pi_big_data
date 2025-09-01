@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pandas
+numpy
+scikit-learn
+scipy
+pandas
+jupyter
+thefuzz
+python-Levenshtein
+ipykernel
+python-dotenv 
+SQLAlchemy     
+psycopg2-binary 
