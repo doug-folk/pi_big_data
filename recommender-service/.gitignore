@@ -1,4 +1,28 @@
-/venv
-__pycache__
+# Ambientes virtuais
+venv/
+.venv/
+gamefinder-venv/
+
+# Dependências
+node_modules/
+
+# Checkpoints Jupyter
+.ipynb_checkpoints/
+
+# Dados e dumps
+*.csv
+*.tsv
+*.json
+*.parquet
+*.db
+*.sqlite
+
+# Cache e compilados Python
+__pycache__/
 *.pyc
+
+# Arquivos de ambiente
 .env
+
+# Arquivos específicos
+ESPECIFICACAO_GAMEFINDER.md
