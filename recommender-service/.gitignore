@@ -20,3 +20,4 @@ __pycache__
 
 recommendation-service/etl/data/*.json
 recommendation-service/etl/data/*.csv
+ESPECIFICACAO_GAMEFINDER.md
