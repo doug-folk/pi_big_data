@@ -11,7 +11,7 @@ class FavoriteController extends Controller
     public function index(Request $request)
     {
         $favorites = $request->user()->favorites()->with('game')->get();
-        return response()->json($favorites);
+    return response()->json(['data' => $favorites]);
     }
 
     public function store(Request $request, $game_id)
@@ -20,7 +20,7 @@ class FavoriteController extends Controller
             'user_id' => $request->user()->id,
             'game_id' => $game_id,
         ]);
-        return response()->json($favorite, 201);
+    return response()->json(['favorite' => $favorite], 201);
     }
 
     public function destroy(Request $request, $game_id)

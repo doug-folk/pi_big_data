@@ -2,49 +2,42 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\GameController;
+use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\RatingController;
+use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\CommunityListController;
 
-// Rotas de autenticação
-Route::post('register', 'AuthController@register');
-Route::post('login', 'AuthController@login');
+
+// Autenticação
+Route::post('register', [AuthController::class, 'register']);
+Route::post('login', [AuthController::class, 'login']);
+
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('logout', 'AuthController@logout');
-    Route::get('user', 'AuthController@profile');
-    Route::put('user', 'AuthController@updateProfile');
+    Route::post('logout', [AuthController::class, 'logout']);
+    Route::get('profile', [AuthController::class, 'profile']);
+    Route::put('profile', [AuthController::class, 'updateProfile']);
+
+    // Jogos
+    Route::get('games', [GameController::class, 'index']);
+    Route::get('games/{id}', [GameController::class, 'show']);
+    Route::get('games/search', [GameController::class, 'search']);
 
     // Favoritos
-    Route::post('games/{id}/favorite', 'FavoriteController@store');
-    Route::delete('games/{id}/favorite', 'FavoriteController@destroy');
-    Route::get('user/favorites', 'FavoriteController@index');
+    Route::post('games/{id}/favorite', [FavoriteController::class, 'store']);
+    Route::delete('games/{id}/favorite', [FavoriteController::class, 'destroy']);
 
     // Avaliações
-    Route::post('games/{id}/ratings', 'RatingController@store');
-    Route::delete('ratings/{id}', 'RatingController@destroy');
+    Route::post('games/{id}/rate', [RatingController::class, 'store']);
+    Route::put('games/{id}/rate', [RatingController::class, 'update']);
+
+    // Feed de atividades
+    Route::get('feed', [ActivityController::class, 'index']);
+
+    // Listas da comunidade
+    Route::get('community-lists', [CommunityListController::class, 'index']);
+    Route::post('community-lists', [CommunityListController::class, 'store']);
+    Route::post('community-lists/{id}/games', [CommunityListController::class, 'addGame']);
 });
 
-// Jogos (leitura)
-Route::get('games', 'GameController@index');
-Route::get('games/{id}', 'GameController@show');
-Route::get('games/{id}/ratings', 'RatingController@index');
-
-// Recomendações
-Route::get('recommendations/user/{user_id}', 'RecommendationController@user');
-Route::get('recommendations/game/{game_id}', 'RecommendationController@game');
-Route::get('recommendations/mood', 'RecommendationController@mood');
-Route::get('recommendations/forgotten', 'RecommendationController@forgotten');
-
-// Descubra Novos Jogos
-Route::get('games/discover', 'GameController@discover');
-
-// Conquistas
-Route::get('user/achievements', 'AchievementController@index');
-
-// Feed de atividades
-Route::get('user/activity', 'ActivityController@index');
-
-// Comunidade
-Route::get('community/lists', 'CommunityListController@index');
-Route::post('community/lists', 'CommunityListController@store');
-Route::post('community/lists/{id}/vote', 'CommunityListController@vote');
-
-// Busca avançada
-Route::get('games/search', 'GameController@search');

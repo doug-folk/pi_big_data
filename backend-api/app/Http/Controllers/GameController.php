@@ -21,7 +21,7 @@ class GameController extends Controller
             $query->where('title', 'like', '%' . $request->q . '%');
         }
         $games = $query->paginate(20);
-        return response()->json($games);
+    return response()->json(['data' => $games]);
     }
 
     public function show($id)
@@ -51,7 +51,7 @@ class GameController extends Controller
         } else {
             $games = $query->orderBy('ratings_count', 'desc')->limit(20)->get();
         }
-        return response()->json($games);
+    return response()->json(['data' => $games]);
     }
 
     public function search(Request $request)
@@ -61,6 +61,6 @@ class GameController extends Controller
             ->orWhere('genre', 'like', "%$q%")
             ->orWhere('platform', 'like', "%$q%")
             ->paginate(20);
-        return response()->json($games);
+    return response()->json(['data' => $games]);
     }
 }

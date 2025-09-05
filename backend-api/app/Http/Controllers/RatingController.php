@@ -11,7 +11,7 @@ class RatingController extends Controller
     public function index($game_id)
     {
         $ratings = Rating::where('game_id', $game_id)->with('user')->get();
-        return response()->json($ratings);
+    return response()->json(['data' => $ratings]);
     }
 
     public function store(Request $request, $game_id)
@@ -30,7 +30,22 @@ class RatingController extends Controller
                 'comment' => $data['comment'] ?? null,
             ]
         );
-        return response()->json($rating, 201);
+    return response()->json(['rating' => $rating], 201);
+    }
+
+    public function update(Request $request, $game_id)
+    {
+        $data = $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'comment' => 'nullable|string|max:1000',
+        ]);
+        $rating = Rating::where('user_id', $request->user()->id)
+            ->where('game_id', $game_id)
+            ->firstOrFail();
+        $rating->rating = $data['rating'];
+        $rating->comment = $data['comment'] ?? null;
+        $rating->save();
+        return response()->json(['rating' => $rating], 200);
     }
 
     public function destroy($id)
