@@ -5,21 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Rating extends Model
+class CommunityList extends Model
 {
     use HasFactory;
-
-    protected $fillable = [
-        'user_id', 'game_id', 'rating', 'comment'
-    ];
+    protected $fillable = ['user_id', 'title', 'description'];
 
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function game()
+    public function games()
     {
-        return $this->belongsTo(Game::class);
+        return $this->belongsToMany(Game::class, 'community_list_games');
     }
 }
