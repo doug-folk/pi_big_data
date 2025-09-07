@@ -10,31 +10,19 @@ class Game extends Model
     use HasFactory;
 
     protected $fillable = [
+        'id',
         'title',
-        'description',
+        'name',
+        'url',
+        'reviews',
         'genre',
+        'categoria',
         'tags',
-        'platform',
-        'developer',
-        'publisher',
-        'release_date',
+        'image_url',
+        'normalized_name',
     ];
 
-    // Ratings recebidos para este jogo
-    public function ratings()
-    {
-        return $this->hasMany(Rating::class);
-    }
-
-    // Favoritos deste jogo
-    public function favorites()
-    {
-        return $this->hasMany(Favorite::class);
-    }
-
-    // Listas da comunidade que incluem este jogo
-    public function communityLists()
-    {
-        return $this->belongsToMany(CommunityList::class, 'community_list_games');
-    }
+    protected $casts = [
+        'tags' => 'array',
+    ];
 }
