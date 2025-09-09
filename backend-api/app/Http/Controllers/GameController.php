@@ -3,88 +3,26 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use App\Models\Game;
 
 class GameController extends Controller
 {
     public function index(Request $request)
     {
-        // Filtro básico: gênero, categoria, busca, tags, paginação
-        $query = Game::query();
-        if ($request->has('genre')) {
-            $query->where('genre', 'like', '%' . $request->genre . '%');
-        }
-        if ($request->has('categoria')) {
-            $query->where('categoria', 'like', '%' . $request->categoria . '%');
-        }
-        if ($request->has('tags')) {
-            $tags = is_array($request->tags) ? $request->tags : explode(',', $request->tags);
-            foreach ($tags as $tag) {
-                $query->whereJsonContains('tags', $tag);
-            }
-        }
-        if ($request->has('q')) {
-            $query->where(function($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->q . '%')
-                  ->orWhere('genre', 'like', '%' . $request->q . '%')
-                  ->orWhere('categoria', 'like', '%' . $request->q . '%');
-            });
-        }
-        $games = $query->paginate(20);
-        $games->getCollection()->transform(function ($game) {
-            return [
-                'id' => $game->id,
-                'title' => $game->title,
-                'name' => $game->name,
-                'url' => $game->url,
-                'reviews' => $game->reviews,
-                'genre' => $game->genre,
-                'categoria' => $game->categoria,
-                'tags' => $game->tags,
-                'image_url' => $game->image_url,
-                'normalized_name' => $game->normalized_name,
-            ];
-        });
+        $games = Game::all();
         return response()->json(['data' => $games]);
     }
 
     public function show($id)
     {
         $game = Game::findOrFail($id);
-        return response()->json([
-            'game' => [
-                'id' => $game->id,
-                'title' => $game->title,
-                'name' => $game->name,
-                'url' => $game->url,
-                'reviews' => $game->reviews,
-                'genre' => $game->genre,
-                'categoria' => $game->categoria,
-                'tags' => $game->tags,
-                'image_url' => $game->image_url,
-                'normalized_name' => $game->normalized_name,
-            ],
-        ]);
+        return response()->json(['game' => $game]);
     }
 
     public function discover(Request $request)
     {
-        $query = Game::query();
-        $games = $query->inRandomOrder()->limit(20)->get();
-        $games = $games->map(function ($game) {
-            return [
-                'id' => $game->id,
-                'title' => $game->title,
-                'name' => $game->name,
-                'url' => $game->url,
-                'reviews' => $game->reviews,
-                'genre' => $game->genre,
-                'categoria' => $game->categoria,
-                'tags' => $game->tags,
-                'image_url' => $game->image_url,
-                'normalized_name' => $game->normalized_name,
-            ];
-        });
+        $games = Game::inRandomOrder()->limit(20)->get();
         return response()->json(['data' => $games]);
     }
 
@@ -95,20 +33,75 @@ class GameController extends Controller
             ->orWhere('genre', 'like', "%$q%")
             ->orWhere('categoria', 'like', "%$q%")
             ->paginate(20);
-        $games->getCollection()->transform(function ($game) {
-            return [
-                'id' => $game->id,
-                'title' => $game->title,
-                'name' => $game->name,
-                'url' => $game->url,
-                'reviews' => $game->reviews,
-                'genre' => $game->genre,
-                'categoria' => $game->categoria,
-                'tags' => $game->tags,
-                'image_url' => $game->image_url,
-                'normalized_name' => $game->normalized_name,
-            ];
-        });
+
+        return response()->json(['data' => $games]);
+    }
+
+    public function recommendByMood(Request $request)
+    {
+        $mood = $request->get('mood', 'Unknown');
+        $top_n = $request->get('top_n', 10);
+
+        $response = Http::get('http://127.0.0.1:8001/recommendations/by-mood', [
+            'mood' => $mood,
+            'top_n' => $top_n
+        ]);
+
+        $ids = collect($response->json())->pluck('id')->toArray();
+        $games = Game::whereIn('id', $ids)->get();
+
+        return response()->json(['data' => $games]);
+    }
+
+    public function recommendForGame($game_id, Request $request)
+    {
+        $top_n = $request->get('top_n', 10);
+
+        $response = Http::get("http://127.0.0.1:8001/recommendations/for-game/{$game_id}", [
+            'top_n' => $top_n
+        ]);
+
+        $ids = collect($response->json())->pluck('id')->toArray();
+        $games = Game::whereIn('id', $ids)->get();
+
+        return response()->json(['data' => $games]);
+    }
+
+    public function discoverByFilter(Request $request)
+    {
+        $params = $request->only(['genre', 'categoria', 'tag', 'top_n']);
+
+        $response = Http::get('http://127.0.0.1:8001/discover/by-filter', $params);
+
+        $ids = collect($response->json())->pluck('id')->toArray();
+        $games = Game::whereIn('id', $ids)->get();
+
+        return response()->json(['data' => $games]);
+    }
+
+    public function discoverRandom(Request $request)
+    {
+        $params = $request->only(['genre', 'categoria', 'tag', 'n']);
+
+        $response = Http::get('http://127.0.0.1:8001/discover/random', $params);
+
+        $ids = collect($response->json())->pluck('id')->toArray();
+        $games = Game::whereIn('id', $ids)->get();
+
+        return response()->json(['data' => $games]);
+    }
+
+    public function discoverByCluster($game_id, Request $request)
+    {
+        $top_n = $request->get('top_n', 10);
+
+        $response = Http::get("http://127.0.0.1:8001/discover/by-cluster/{$game_id}", [
+            'top_n' => $top_n
+        ]);
+
+        $ids = collect($response->json())->pluck('id')->toArray();
+        $games = Game::whereIn('id', $ids)->get();
+
         return response()->json(['data' => $games]);
     }
 }
