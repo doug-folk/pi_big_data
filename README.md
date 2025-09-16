@@ -87,6 +87,10 @@ Siga as instruções abaixo para configurar e iniciar cada parte da aplicação.
     source venv/bin/activate  # Para Linux/macOS
     # venv\Scripts\activate   # Para Windows
     ```
+2.1.  Crie um arquivo .env com a variável DATABASE_URL apontando para o banco de dados do Laravel, por exemplo:
+```bash
+    DATABASE_URL=postgresql://usuario:senha@localhost:5432/nome_do_banco
+```
 
 3.  Instale as bibliotecas necessárias:
     ```bash
