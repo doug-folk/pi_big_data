@@ -38,7 +38,7 @@ def startup_event():
         GAMES_DF['tags'].fillna('') + ' ' +
         GAMES_DF['categoria'].fillna('')
     )
-    tfidf = TfidfVectorizer(stop_words='english', max_features=1000, min_df=5)  # Menos features
+    tfidf = TfidfVectorizer(stop_words='english', max_features=1000, min_df=5) 
     tfidf_matrix = tfidf.fit_transform(features_text)
     tfidf_array = tfidf_matrix.toarray().astype(np.float32)
     annoy_dim = tfidf_array.shape[1]
@@ -67,9 +67,17 @@ def recommend_for_game(game_id: int, top_n: int = 10):
         raise HTTPException(503, "Dados não carregados.")
     if game_id not in GAMES_DF.index:
         raise HTTPException(404, f"Jogo com ID {game_id} não encontrado.")
+    
     idx = list(GAMES_DF.index).index(game_id)
-    annoy_indices = ANNOY_INDEX.get_nns_by_item(idx, top_n + 1, include_distances=False)
-    annoy_indices = [i for i in annoy_indices if i != idx][:top_n]
+    
+    # Pega mais vizinhos para randomizar
+    n_neighbors = max(top_n * 3, 20)  # ex: 3 vezes top_n ou no mínimo 20
+    annoy_indices = ANNOY_INDEX.get_nns_by_item(idx, n_neighbors, include_distances=False)
+    annoy_indices = [i for i in annoy_indices if i != idx]
+    
+    # Sorteia top_n de forma aleatória
+    annoy_indices = random.sample(annoy_indices, min(top_n, len(annoy_indices)))
+    
     columns_to_show = ['title', 'genre', 'tags', 'categoria', 'url', 'image_url', 'normalized_name']
     result = []
     for i in annoy_indices:
@@ -110,9 +118,11 @@ def discover_by_filter(
     if tag:
         df = df[df['tags'].str.contains(tag, case=False, na=False)]
     columns_to_show = ['title', 'genre', 'tags', 'categoria', 'url', 'image_url', 'normalized_name']
+    indices = list(df.index)
+    indices = random.sample(indices, min(top_n, len(indices)))
     return [
         {"id": int(idx), **{col: df.loc[idx][col] for col in columns_to_show if col in df.loc[idx]}}
-        for idx in df.head(top_n).index
+        for idx in indices
     ]
 
 @app.get("/discover/random", summary="Descoberta aleatória controlada")
@@ -147,9 +157,11 @@ def discover_by_cluster(game_id: int, top_n: int = 10):
     cluster_id = GAMES_DF.loc[game_id, 'cluster']
     df = GAMES_DF[(GAMES_DF['cluster'] == cluster_id) & (GAMES_DF.index != game_id)]
     columns_to_show = ['title', 'genre', 'tags', 'categoria', 'url', 'image_url', 'normalized_name']
+    indices = list(df.index)
+    indices = random.sample(indices, min(top_n, len(indices)))
     return [
         {"id": int(idx), **{col: df.loc[idx][col] for col in columns_to_show if col in df.loc[idx]}}
-        for idx in df.head(top_n).index
+        for idx in indices
     ]
 
 if __name__ == "__main__":
