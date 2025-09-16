@@ -36,22 +36,29 @@ class GameFinder {
             this.loadRandomGames();
         });
 
-        document.getElementById('popular-games-btn').addEventListener('click', () => {
-            this.loadPopularGames();
-        });
-
         // Filters
         document.getElementById('apply-filters-btn').addEventListener('click', () => {
             this.applyFilters();
         });
 
         // Mood buttons
-        document.querySelectorAll('.mood-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const mood = e.currentTarget.dataset.mood;
-                this.getRecommendationsByMood(mood);
+        const moodContainer = document.querySelector('.mood-buttons'); // container que envolve os botões
+        if (moodContainer) {
+            moodContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.mood-btn');
+        if (!btn) return; // clicou fora do botão
+        const mood = btn.dataset.mood;
+        console.log('[GameFinder] botão mood clicado:', mood, btn);
+
+        if (mood) {
+            window.gameFinder.getRecommendationsByMood(mood);
+        } else {
+            console.warn('[GameFinder] dataset.mood não definido no botão', btn);
+        }
             });
-        });
+        } else {
+            console.warn('[GameFinder] container .mood-buttons não encontrado');
+        }
 
         // Similar games
         document.getElementById('find-similar-btn').addEventListener('click', () => {
@@ -68,6 +75,35 @@ class GameFinder {
                 this.closeModal();
             }
         });
+
+        // Discover by Cluster
+document.getElementById('find-cluster-btn').addEventListener('click', async () => {
+    const gameName = document.getElementById('game-search-input').value.trim();
+    if (!gameName) {
+        alert("Digite o nome de um jogo!");
+        return;
+    }
+
+    try {
+        const searchUrl = `${this.API_BASE_URL}/games/search?q=${encodeURIComponent(gameName)}`;
+        const searchResponse = await fetch(searchUrl);
+        const searchData = await searchResponse.json();
+
+        const gamesArray = Array.isArray(searchData.data) ? searchData.data
+            : (searchData.data && Array.isArray(searchData.data.data)) ? searchData.data.data
+            : [];
+
+            if (gamesArray.length > 0) {
+                const gameId = gamesArray[0].id;
+                await this.discoverByCluster(gameId);
+            } else {
+                this.showError('Jogo não encontrado. Tente outro nome.');
+            }
+        } catch (error) {
+            this.showError('Erro ao descobrir jogos pelo cluster.');
+        }
+    });
+
     }
 
     switchSection(sectionName) {
@@ -122,15 +158,6 @@ class GameFinder {
         }
     }
 
-    async loadPopularGames() {
-        this.showLoading();
-        try {
-            await this.fetchAndDisplayGames(`${this.API_BASE_URL}/games/discover`);
-        } catch (error) {
-            this.showError('Erro ao carregar jogos populares.');
-        }
-    }
-
     async applyFilters() {
         const genre = document.getElementById('genre-filter').value;
         const category = document.getElementById('category-filter').value;
@@ -165,13 +192,17 @@ class GameFinder {
 
         this.showLoading();
         try {
-            // First, search for the game to get its ID
             const searchUrl = `${this.API_BASE_URL}/games/search?q=${encodeURIComponent(gameName)}`;
             const searchResponse = await fetch(searchUrl);
             const searchData = await searchResponse.json();
-            
-            if (searchData.data && searchData.data.length > 0) {
-                const gameId = searchData.data[0].id;
+
+            // Corrigido: pega o array paginado corretamente
+            const gamesArray = Array.isArray(searchData.data) ? searchData.data
+                : (searchData.data && Array.isArray(searchData.data.data)) ? searchData.data.data
+                : [];
+
+            if (gamesArray.length > 0) {
+                const gameId = gamesArray[0].id;
                 const url = `${this.API_BASE_URL}/games/recommend/for-game/${gameId}?top_n=12`;
                 await this.fetchAndDisplayGames(url);
             } else {
@@ -383,6 +414,17 @@ class GameFinder {
         }
     }
 
+        async discoverByCluster(gameId) {
+            this.showLoading();
+                try {
+                    const url = `${this.API_BASE_URL}/games/discover/by-cluster/${gameId}?top_n=12`;
+                    await this.fetchAndDisplayGames(url);
+                } catch (error) {
+                    this.showError('Erro ao descobrir jogos pelo cluster.');
+                }
+        }
+
+
     displayDiscoverPreview(games) {
         const discoverGrid = document.getElementById('discover-games-grid');
         if (!discoverGrid) return;
@@ -440,31 +482,40 @@ class GameFinder {
 
         games.forEach(game => {
             if (game.genre) {
-                // Dividir gêneros múltiplos se separados por vírgula
                 game.genre.split(',').forEach(g => genres.add(g.trim()));
             }
             if (game.categoria) {
-                categories.add(game.categoria.trim());
+                if (Array.isArray(game.categoria)) {
+                    game.categoria.forEach(c => categories.add(c.trim()));
+                } else {
+                    try {
+                        let cats = JSON.parse(game.categoria);
+                        if (Array.isArray(cats)) cats.forEach(c => categories.add(c.trim()));
+                        else categories.add(game.categoria.trim());
+                    } catch {
+                        categories.add(game.categoria.trim());
+                    }
+                }
             }
         });
 
         // Atualizar select de gêneros
         const genreSelect = document.getElementById('genre-filter');
         genreSelect.innerHTML = '<option value="">Todos os gêneros</option>';
-        Array.from(genres).sort().forEach(g => {
+        Array.from(genres).sort().forEach(genre => {
             const option = document.createElement('option');
-            option.value = g;
-            option.textContent = g;
+            option.value = genre;
+            option.textContent = genre;
             genreSelect.appendChild(option);
         });
 
         // Atualizar select de categorias
         const categorySelect = document.getElementById('category-filter');
         categorySelect.innerHTML = '<option value="">Todas as categorias</option>';
-        Array.from(categories).sort().forEach(c => {
+        Array.from(categories).sort().forEach(category => {
             const option = document.createElement('option');
-            option.value = c;
-            option.textContent = c;
+            option.value = category;
+            option.textContent = category;
             categorySelect.appendChild(option);
         });
     }

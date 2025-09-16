@@ -74,7 +74,7 @@ class GameController extends Controller
         $response = Http::get('http://127.0.0.1:8001/discover/by-filter', $params);
 
         $ids = collect($response->json())->pluck('id')->toArray();
-        $games = Game::whereIn('id', $ids)->get();
+        $games = Game::whereIn('id', $ids)->inRandomOrder()->get();
 
         return response()->json(['data' => $games]);
     }
