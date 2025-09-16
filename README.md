@@ -95,7 +95,7 @@ Siga as instruções abaixo para configurar e iniciar cada parte da aplicação.
 
 4.  Inicie o servidor da API com Uvicorn:
     ```bash
-    uvicorn main:app --reload
+    uvicorn recommender_service:app --reload --port 8001
     ```
 
 ### 3. Configuração do Frontend (React)
