@@ -89,7 +89,12 @@ Siga as instruções abaixo para configurar e iniciar cada parte da aplicação.
     ```
 2.1.  Crie um arquivo .env com a variável DATABASE_URL apontando para o banco de dados do Laravel, por exemplo:
 ```bash
-    DATABASE_URL=postgresql://usuario:senha@localhost:5432/nome_do_banco
+DATABASE_URL="postgresql://postgres:root@127.0.0.1:5432/gamefinder"
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=gamefinder
+DB_USER=postgres
+DB_PASSWORD=root
 ```
 
 3.  Instale as bibliotecas necessárias:
@@ -102,7 +107,7 @@ Siga as instruções abaixo para configurar e iniciar cada parte da aplicação.
     uvicorn recommender_service:app --reload --port 8001
     ```
 
-### 3. Configuração do Frontend (React)
+### 3. Configuração do Frontend (React) -- NÃO IMPLEMENTADO AINDA - frontend atual fetio em css e js puro - rode um servidor local ou usa a extensão do vscode "Go live"
 
 1.  Entre no diretório do frontend:
     ```bash
