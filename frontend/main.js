@@ -383,7 +383,7 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
     showError(message) {
         const gameList = document.getElementById('game-list');
         gameList.innerHTML = `
-            <div class="text-center" style="grid-column: 1 / -1; padding: 2rem; background: rgba(255, 255, 255, 0.9); border-radius: 15px; color: #e74c3c;">
+            <div class="text-center" style="grid-column: 1 / -1; padding: 2rem; background: rgba(255, 255, 255, 0.9); border-radius: 15px; color: #000;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
                 <p style="font-size: 1.2rem; font-weight: 500;">${message}</p>
             </div>
