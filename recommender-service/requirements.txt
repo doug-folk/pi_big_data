@@ -4,7 +4,6 @@ pandas
 numpy
 scikit-learn
 scipy
-pandas
 jupyter
 thefuzz
 python-Levenshtein
@@ -14,3 +13,6 @@ SQLAlchemy
 psycopg2-binary
 rapidfuzz
 tqdm
+annoy
+sentence-transformers
+torch
