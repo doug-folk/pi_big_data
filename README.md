@@ -101,7 +101,11 @@ DB_PASSWORD=root
     ```bash
     pip install -r requirements.txt
     ```
-
+3.1.  Rode o script etl:
+    ```bash
+    pip python3 etl_scripty.py
+    ```
+    
 4.  Inicie o servidor da API com Uvicorn:
     ```bash
     uvicorn recommender_service:app --reload --port 8001
