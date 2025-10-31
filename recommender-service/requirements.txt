@@ -15,5 +15,4 @@ rapidfuzz
 tqdm
 annoy
 sentence-transformers
-torch
 matplotlib

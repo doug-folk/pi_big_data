@@ -131,10 +131,37 @@ def startup_event():
     global HAS_SENTENCE_TRANSFORMERS
     
     if HAS_SENTENCE_TRANSFORMERS:
+        enable_transformers = os.getenv("ENABLE_SENTENCE_TRANSFORMERS", "true").lower() in ("1", "true", "yes")
+        if not enable_transformers:
+            print("SentenceTransformer desabilitado via variável de ambiente. Usando TF-IDF...")
+            HAS_SENTENCE_TRANSFORMERS = False
+
+    if HAS_SENTENCE_TRANSFORMERS:
         print("Gerando embeddings com SentenceTransformer...")
         try:
             embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-            text_embeddings = embedding_model.encode(game_descriptions.tolist(), show_progress_bar=True)
+            descriptions = game_descriptions.tolist()
+            total_sentences = len(descriptions)
+            batch_size = int(os.getenv("SENTENCE_TRANSFORMER_BATCH", 256) or 256)
+            batch_size = max(1, batch_size)
+            print(f"[STARTUP] SentenceTransformer ativo. Processando {total_sentences} jogos em lotes de {batch_size}.")
+
+            embedding_batches = []
+            for start in tqdm(range(0, total_sentences, batch_size), desc="Gerando embeddings (SentenceTransformer)", unit="lote"):
+                batch = descriptions[start:start + batch_size]
+                emb_batch = embedding_model.encode(
+                    batch,
+                    batch_size=batch_size,
+                    show_progress_bar=False,
+                    convert_to_numpy=True,
+                )
+                embedding_batches.append(emb_batch.astype(np.float32))
+
+            if embedding_batches:
+                text_embeddings = np.vstack(embedding_batches)
+            else:
+                text_embeddings = np.zeros((0, embedding_model.get_sentence_embedding_dimension()), dtype=np.float32)
+
             print(f"Embeddings gerados: {text_embeddings.shape}")
         except Exception as e:
             print(f"Erro nos embeddings: {e}. Usando TF-IDF...")
@@ -400,6 +427,9 @@ def discover_random(
 ):
     if GAMES_DF is None:
         raise HTTPException(503, "Dados não carregados.")
+    if n <= 0:
+        return []
+
     df = GAMES_DF.copy()
     if genre:
         df = df[df['genre'].str.contains(genre, case=False, na=False)]
@@ -408,7 +438,15 @@ def discover_random(
     if tag:
         df = df[df['tags'].str.contains(tag, case=False, na=False)]
     columns_to_show = ['title', 'genre', 'tags', 'categoria', 'url', 'normalized_name']
-    sample_df = df.sample(n=min(n, len(df))) if not df.empty else GAMES_DF.sample(n=n)
+    if not df.empty:
+        sample_size = min(n, len(df))
+        sample_df = df.sample(n=sample_size)
+    elif not GAMES_DF.empty:
+        sample_size = min(n, len(GAMES_DF))
+        sample_df = GAMES_DF.sample(n=sample_size)
+    else:
+        return []
+
     return [
         {"id": int(idx), **{col: sample_df.loc[idx][col] for col in columns_to_show if col in sample_df.loc[idx]}}
         for idx in sample_df.index

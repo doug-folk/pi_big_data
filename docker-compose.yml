@@ -1,0 +1,105 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: gamefinder
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gamefinder"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  etl:
+    build:
+      context: ./recommender-service
+      dockerfile: Dockerfile
+    command: ["python", "etl/etl_script.py"]
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gamefinder
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: gamefinder
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      WAIT_FOR_GAMES_TABLE: "false"
+    depends_on:
+      - postgres
+    restart: "no"
+
+  recommender:
+    build:
+      context: ./recommender-service
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gamefinder
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: gamefinder
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      WAIT_FOR_GAMES_TABLE: "true"
+    ports:
+      - "8001:8001"
+    depends_on:
+      - postgres
+      - etl
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend-api
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      FRONTEND_URL: http://localhost:3000
+      APP_KEY: base64:8kvXeZHAtVVSnDCyKvCX8gJ+lrqM+gaSoK3r1/3tmBM=
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: gamefinder
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      CACHE_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RECOMMENDER_SERVICE_URL: http://recommender:8001
+      WAIT_FOR_GAMES_TABLE: "true"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+      - etl
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend/index.html:/usr/share/nginx/html/index.html:ro
+      - ./frontend/style.css:/usr/share/nginx/html/style.css:ro
+      - ./frontend/main.js:/usr/share/nginx/html/main.js:ro
+      - ./frontend/images:/usr/share/nginx/html/images:ro
+      - ./frontend/public:/usr/share/nginx/html/public:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
