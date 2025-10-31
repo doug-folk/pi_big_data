@@ -129,3 +129,25 @@ DB_PASSWORD=root
     ```
 
 Se tudo estiver configurado corretamente, o backend estará acessível em `http://localhost:8000`, o serviço de Python em `http://localhost:8001` (ou a porta que você configurar no Uvicorn) e o frontend em `http://localhost:3000`.
+
+## Execução com Docker
+
+Para subir toda a stack com um único comando:
+
+1. Garanta que Docker e Docker Compose estejam instalados.
+2. Se tiver um stack anterior rodando, pare-o:
+   ```bash
+   docker compose down
+   ```
+3. Na raiz do projeto, suba a stack reconstruindo as imagens:
+   ```bash
+   docker compose up --build
+   ```
+4. Aguarde os logs mostrarem o término do serviço `etl` (responsável por popular a tabela `games` com os datasets de Steam/Amazon). Assim que ele finalizar, os serviços ficarão ativos em:
+   - Frontend: `http://localhost:3000`
+   - Backend Laravel: `http://localhost:8000`
+   - Serviço de recomendações (FastAPI): `http://localhost:8001`
+
+O PostgreSQL e o Redis ficam acessíveis apenas dentro da rede Docker (por exemplo, `docker compose exec postgres psql -U postgres gamefinder`). Caso precise um acesso externo, exponha as portas manualmente no `docker-compose.yml`.
+
+O volume `postgres_data` preserva o banco entre reinicializações. Para zerar tudo, use `docker compose down -v`.
