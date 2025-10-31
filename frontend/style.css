@@ -276,9 +276,18 @@ main {
     cursor: pointer;
 }
 
+.game-card-small.no-link {
+    cursor: default;
+}
+
 .game-card-small:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.game-card-small.no-link:hover {
+    transform: none;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 .game-card-small img {
@@ -502,9 +511,18 @@ label[for="category-filter"] {
     text-align: center;
 }
 
+.game-card.no-link {
+    cursor: default;
+}
+
 .game-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+}
+
+.game-card.no-link:hover {
+    transform: none;
+    box-shadow: none;
 }
 
 .game-card img {
@@ -551,6 +569,12 @@ label[for="category-filter"] {
     white-space: normal;   /* permite quebrar linha se necessário */
     max-width: 100%;       /* não ultrapassa o card */
     word-break: break-word;
+}
+
+.link-warning {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #ff6b6b;
 }
 
 /* Loading */

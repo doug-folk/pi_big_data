@@ -5,6 +5,13 @@ class GameFinder {
         this.init();
     }
 
+    isValidExternalUrl(url) {
+        if (!url || typeof url !== "string") return false;
+        const trimmed = url.trim();
+        if (!trimmed || trimmed.toLowerCase() === "unknown") return false;
+        return /^https?:\/\//i.test(trimmed);
+    }
+
     init() {
         this.bindEvents();
         this.loadFiltersData();
@@ -295,9 +302,16 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
     createGameCard(game) {
         const gameCard = document.createElement('div');
         gameCard.className = 'game-card';
-        gameCard.onclick = () => {
-            if (game.url) window.open(game.url, "_blank");
-        };
+        const hasValidUrl = this.isValidExternalUrl(game.url);
+
+        if (hasValidUrl) {
+            gameCard.onclick = () => window.open(game.url, "_blank");
+            gameCard.style.cursor = 'pointer';
+        } else {
+            gameCard.onclick = null;
+            gameCard.style.cursor = 'default';
+            gameCard.classList.add('no-link');
+        }
 
         let tags = [];
         if (Array.isArray(game.tags)) {
@@ -312,6 +326,7 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
             <div class="game-tags">
                 ${tags.map(tag => `<span class="tag">${tag}</span>`).join("")}
             </div>
+            ${hasValidUrl ? '' : '<div class="link-warning">Link indisponível</div>'}
         `;
         return gameCard;
     }
@@ -320,10 +335,18 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
         const modal = document.getElementById('game-modal');
         const modalBody = document.getElementById('modal-body');
 
-        const imageUrl = game.image_url || 'https://via.placeholder.com/400x300?text=Sem+Imagem';
+        const validImageUrl = this.isValidExternalUrl(game.image_url) ? game.image_url : null;
+        const imageUrl = validImageUrl || 'https://via.placeholder.com/400x300?text=Sem+Imagem';
         const genre = game.genre || 'Não disponível';
         const categoria = game.categoria || 'Não disponível';
-        const tags = game.tags ? game.tags.split(',') : [];
+        const tags = Array.isArray(game.tags)
+            ? game.tags
+            : (typeof game.tags === "string" ? game.tags.split(',') : []);
+        const cleanTags = tags
+            .filter(Boolean)
+            .map(tag => (typeof tag === "string" ? tag.trim() : tag))
+            .slice(0, 6);
+        const externalUrl = this.isValidExternalUrl(game.url) ? game.url : null;
 
         modalBody.innerHTML = `
             <h2>${game.title}</h2>
@@ -331,20 +354,24 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
             <div class="game-details">
                 <p><strong>Gênero:</strong> ${genre}</p>
                 <p><strong>Categoria:</strong> ${categoria}</p>
-                ${tags.length > 0 ? `
+                ${cleanTags.length > 0 ? `
                     <p><strong>Tags:</strong></p>
                     <div class="game-tags">
-                        ${tags.map(tag => `<span class="tag">${tag.trim()}</span>`).join('')}
+                        ${cleanTags.map(tag => `<span class="tag">${tag}</span>`).join('')}
                     </div>
                 ` : ''}
-                ${game.url ? `
+                ${externalUrl ? `
                     <div style="margin-top: 2rem;">
-                        <a href="${game.url}" target="_blank" class="action-btn" style="display: inline-block; text-decoration: none;">
+                        <a href="${externalUrl}" target="_blank" class="action-btn" style="display: inline-block; text-decoration: none;">
                             <i class="fas fa-external-link-alt"></i>
                             Ver Jogo
                         </a>
                     </div>
-                ` : ''}
+                ` : `
+                    <div class="link-warning" style="margin-top: 2rem;">
+                        <i class="fas fa-ban"></i> Link externo indisponível
+                    </div>
+                `}
                 <div style="margin-top: 1rem;">
                     <button class="action-btn" onclick="gameFinder.findSimilarGamesById(${game.id})">
                         <i class="fas fa-search-plus"></i>
@@ -440,15 +467,23 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
     createSmallGameCard(game) {
         const gameCard = document.createElement('div');
         gameCard.className = 'game-card-small';
-        gameCard.onclick = () => {
-            if (game.url) window.open(game.url, "_blank");
-        };
+        const hasValidUrl = this.isValidExternalUrl(game.url);
+
+        if (hasValidUrl) {
+            gameCard.onclick = () => window.open(game.url, "_blank");
+            gameCard.style.cursor = 'pointer';
+        } else {
+            gameCard.onclick = null;
+            gameCard.style.cursor = 'default';
+            gameCard.classList.add('no-link');
+        }
 
         gameCard.innerHTML = `
             <div class="game-icon"><i class="fas fa-gamepad"></i></div>
             <div class="game-card-small-content">
                 <h4>${game.title}</h4>
                 <p>${game.genre || 'Gênero não disponível'}</p>
+                ${hasValidUrl ? '' : '<span class="link-warning">Link indisponível</span>'}
             </div>
         `;
 
