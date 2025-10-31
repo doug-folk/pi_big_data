@@ -475,7 +475,14 @@ label[for="category-filter"] {
 .game-icon {
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
-    color: black;
+}
+
+.game-card .game-icon {
+    color: #fff;
+}
+
+.game-card-small .game-icon {
+    color: #000;
 }
 .game-title {
     font-size: 1.2rem;
