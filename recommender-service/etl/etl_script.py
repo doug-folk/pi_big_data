@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
-from tqdm import tqdm
 
 def connect_to_db():
     load_dotenv()
@@ -36,7 +35,7 @@ def normalize_name(name):
     return re.sub(r'\s+', ' ', name).strip()
 
 def ensure_list(val):
-    if val is None or (isinstance(val, float) and np.isnan(val)):
+    if val is None or (isinstance(val, (float, np.floating)) and np.isnan(val)):
         return []
     if isinstance(val, list):
         return val
@@ -49,6 +48,29 @@ def ensure_list(val):
         except:
             return [val]
     return [val]
+
+def sanitize_url(val):
+    if isinstance(val, (float, np.floating)) and np.isnan(val):
+        return None
+    if isinstance(val, str):
+        trimmed = val.strip()
+        if not trimmed or trimmed.lower() in {'unknown', 'nan', 'null', 'none'}:
+            return None
+        if re.match(r'^https?://', trimmed):
+            return trimmed
+    return None
+
+def normalize_scalar_value(val):
+    if val is None:
+        return 'Unknown'
+    if isinstance(val, (float, np.floating)) and np.isnan(val):
+        return 'Unknown'
+    if isinstance(val, str):
+        trimmed = val.strip()
+        if not trimmed or trimmed.lower() in {'nan', 'null', 'none'}:
+            return 'Unknown'
+        return trimmed
+    return str(val)
 
 def main():
     base_dir = os.getcwd()
@@ -97,14 +119,14 @@ def main():
     unified_df = pd.merge(steam_df_norm, amazon_df_norm, on='normalized_name', how='outer')
     print(f"{len(unified_df)} registros após junção.")
     final_games = pd.DataFrame()
-    final_games['title'] = unified_df['title'].fillna(unified_df['name']).astype(str)
-    final_games['name'] = unified_df['name'].astype(str)
-    final_games['url'] = unified_df['url'].astype(str)
-    final_games['reviews'] = unified_df['reviews'].astype(str)
-    final_games['genre'] = unified_df['genre'].fillna('Unknown').replace(['', 'nan', None], 'Unknown').astype(str)
+    final_games['title'] = unified_df['title'].fillna(unified_df['name'])
+    final_games['name'] = unified_df['name']
+    final_games['url'] = unified_df['url'].apply(sanitize_url)
+    final_games['reviews'] = unified_df['reviews']
+    final_games['genre'] = unified_df['genre']
     final_games['categoria'] = unified_df['category'].apply(lambda x: json.dumps(ensure_list(x)) if x else json.dumps(['Unknown']))
     final_games['tags'] = unified_df['popular_tags'].apply(lambda x: json.dumps(ensure_list(x)) if x else json.dumps(['Unknown']))
-    final_games['image_url'] = unified_df['image_url'].astype(str) if 'image_url' in unified_df.columns else ''
+    final_games['image_url'] = unified_df['image_url'].apply(sanitize_url)
     final_games['normalized_name'] = unified_df['normalized_name']
     final_games.reset_index(drop=True, inplace=True)
     final_games.insert(0, 'id', final_games.index)
@@ -112,11 +134,16 @@ def main():
         'id', 'title', 'name', 'url', 'reviews', 'genre', 'categoria', 'tags', 'image_url', 'normalized_name'
     ]
     final_games = final_games.reindex(columns=migration_cols)
-    # Preencher todos os campos nan ou vazios com 'Unknown'
-    for col in ['title', 'name', 'url', 'reviews', 'genre', 'categoria', 'tags', 'image_url', 'normalized_name']:
-        final_games[col] = final_games[col].replace([None, '', 'nan', float('nan')], 'Unknown')
-        if final_games[col].dtype == object:
-            final_games[col] = final_games[col].fillna('Unknown')
+    textual_columns = ['title', 'name', 'reviews', 'genre', 'categoria', 'tags', 'normalized_name']
+    for col in textual_columns:
+        final_games[col] = final_games[col].apply(normalize_scalar_value)
+
+    final_games['url'] = final_games['url'].apply(sanitize_url)
+    final_games['image_url'] = final_games['image_url'].apply(sanitize_url)
+
+    valid_url_count = final_games['url'].notna().sum()
+    missing_url_count = len(final_games) - valid_url_count
+    print(f"URLs válidas: {valid_url_count}. Registros sem URL: {missing_url_count}.")
     print(f"Transformação concluída. {len(final_games)} jogos únicos.")
     print(final_games.head())
     for start in range(0, len(final_games), 200):

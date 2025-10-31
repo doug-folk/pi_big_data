@@ -25,4 +25,29 @@ class Game extends Model
     protected $casts = [
         'tags' => 'array',
     ];
+
+    protected function normalizeUrl(?string $value): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '' || strcasecmp($trimmed, 'unknown') === 0) {
+            return null;
+        }
+
+        return preg_match('/^https?:\/\//i', $trimmed) ? $trimmed : null;
+    }
+
+    public function getUrlAttribute($value): ?string
+    {
+        return $this->normalizeUrl($value);
+    }
+
+    public function getImageUrlAttribute($value): ?string
+    {
+        return $this->normalizeUrl($value);
+    }
 }
