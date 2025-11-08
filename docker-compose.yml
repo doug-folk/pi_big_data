@@ -20,8 +20,8 @@ services:
 
   etl:
     build:
-      context: ./recommender-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: recommender-service/Dockerfile
     command: ["python", "etl/etl_script.py"]
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gamefinder
@@ -31,14 +31,15 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       WAIT_FOR_GAMES_TABLE: "false"
+      SERVICE_TYPE: etl
     depends_on:
       - postgres
     restart: "no"
 
   recommender:
     build:
-      context: ./recommender-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: recommender-service/Dockerfile
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gamefinder
       DB_HOST: postgres
@@ -47,6 +48,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       WAIT_FOR_GAMES_TABLE: "true"
+      SERVICE_TYPE: recommender
     ports:
       - "8001:8001"
     depends_on:
@@ -56,8 +58,8 @@ services:
 
   backend:
     build:
-      context: ./backend-api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend-api/Dockerfile
     environment:
       APP_ENV: local
       APP_DEBUG: "true"
@@ -77,6 +79,7 @@ services:
       REDIS_PORT: 6379
       RECOMMENDER_SERVICE_URL: http://recommender:8001
       WAIT_FOR_GAMES_TABLE: "true"
+      SERVICE_TYPE: backend
     ports:
       - "8000:8000"
     depends_on:

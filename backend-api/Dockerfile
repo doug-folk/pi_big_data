@@ -24,10 +24,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-COPY composer.json composer.lock ./
+COPY backend-api/composer.json backend-api/composer.lock ./
 RUN composer install --prefer-dist --no-interaction --no-progress --no-scripts
 
-COPY . .
+COPY backend-api/ .
 
 RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views \
     && chown -R www-data:www-data storage bootstrap/cache
