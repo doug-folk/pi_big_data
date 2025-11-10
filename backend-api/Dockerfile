@@ -1,19 +1,19 @@
 # ===========================
-# Etapa 1: Composer dependencies
+# Etapa 1: Instalação de dependências via Composer
 # ===========================
 FROM composer:2 AS vendor
 
 WORKDIR /app
 
-# Copia apenas os arquivos de dependência primeiro (melhor cache)
+# Copia apenas os arquivos de dependência primeiro (melhor uso de cache)
 COPY backend-api/composer.json backend-api/composer.lock ./
 
-# Instala dependências PHP (sem scripts ainda)
+# Instala dependências PHP (sem scripts ainda, para evitar erros do artisan)
 RUN composer install --no-dev --no-scripts --no-interaction --no-progress --prefer-dist
 
 
 # ===========================
-# Etapa 2: PHP Application
+# Etapa 2: Aplicação Laravel (PHP 8.2)
 # ===========================
 FROM php:8.2-cli
 
@@ -21,7 +21,7 @@ FROM php:8.2-cli
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TERM=xterm
 
-# Instala dependências do sistema e extensões PHP necessárias
+# Instala dependências e extensões PHP necessárias
 RUN apt-get update && apt-get install -y \
     git unzip zip libpq-dev libzip-dev libssl-dev libpng-dev libonig-dev \
     && docker-php-ext-install pdo pdo_pgsql zip \
@@ -29,25 +29,21 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-enable redis \
     && rm -rf /var/lib/apt/lists/*
 
-# Copia dependências do composer da etapa anterior
+# Copia dependências do Composer da etapa anterior
 COPY --from=vendor /app/vendor /var/www/html/vendor
 
-# Copia o restante da aplicação
+# Copia o restante da aplicação Laravel
 COPY backend-api /var/www/html
 
 WORKDIR /var/www/html
 
 # ===========================
-# Limpa cache e corrige permissões
+# Limpeza e permissões
 # ===========================
-RUN php artisan config:clear || true && \
-    php artisan cache:clear || true && \
-    php artisan route:clear || true && \
-    php artisan view:clear || true && \
-    chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # ===========================
-# Garante que o Laravel use apenas PostgreSQL
+# Configuração do banco de dados PostgreSQL (Railway)
 # ===========================
 ENV DB_CONNECTION=pgsql
 ENV DB_HOST=shinkansen.proxy.rlwy.net
@@ -56,7 +52,7 @@ ENV DB_DATABASE=railway
 ENV DB_USERNAME=postgres
 ENV DB_PASSWORD=CsOQcmVGWvMNhuDFStcdTRYwsMCLJHSL
 
-# ⚠️ Sobrescreve DATABASE_URL do Railway para impedir parse automático
+# ⚠️ Sobrescreve DATABASE_URL do Railway (para evitar conflitos)
 ENV DATABASE_URL=""
 
 # ===========================
@@ -64,18 +60,14 @@ ENV DATABASE_URL=""
 # ===========================
 EXPOSE 8080
 
-CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
-
-# ===========================
-# Expor porta 8080
-# ===========================
-EXPOSE 8080
-
 # ===========================
 # Inicialização com limpeza de cache automática
 # ===========================
-CMD sh -c "php artisan config:clear && \
+CMD sh -c "echo '🚀 Iniciando aplicação Laravel...' && \
+           php artisan config:clear && \
            php artisan cache:clear && \
            php artisan route:clear && \
            php artisan view:clear && \
+           php artisan config:cache && \
+           echo '✅ Cache limpo com sucesso!' && \
            php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
