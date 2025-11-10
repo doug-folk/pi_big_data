@@ -1,108 +1,52 @@
-services:
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: gamefinder
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d gamefinder"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+# ===========================
+# Etapa 1: Composer dependencies
+# ===========================
+FROM composer:2 AS vendor
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
+# Define diretório de trabalho
+WORKDIR /app
 
-  etl:
-    build:
-      context: .
-      dockerfile: recommender-service/Dockerfile
-    command: ["python", "etl/etl_script.py"]
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gamefinder
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_DATABASE: gamefinder
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      WAIT_FOR_GAMES_TABLE: "false"
-      SERVICE_TYPE: etl
-    depends_on:
-      - postgres
-    restart: "no"
+# Copia apenas os arquivos de dependência
+COPY backend-api/composer.json backend-api/composer.lock ./
 
-  recommender:
-    build:
-      context: .
-      dockerfile: recommender-service/Dockerfile
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gamefinder
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_DATABASE: gamefinder
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      WAIT_FOR_GAMES_TABLE: "true"
-      SERVICE_TYPE: recommender
-    ports:
-      - "8001:8001"
-    depends_on:
-      - postgres
-      - etl
-    restart: unless-stopped
+# Instala dependências do Laravel sem rodar scripts (artisan ainda não existe)
+RUN composer install --no-dev --no-scripts --no-interaction --no-progress --prefer-dist
 
-  backend:
-    build:
-      context: .
-      dockerfile: backend-api/Dockerfile
-    environment:
-      APP_ENV: local
-      APP_DEBUG: "true"
-      APP_URL: http://localhost:8000
-      FRONTEND_URL: http://localhost:3000
-      APP_KEY: base64:8kvXeZHAtVVSnDCyKvCX8gJ+lrqM+gaSoK3r1/3tmBM=
-      DB_CONNECTION: pgsql
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_DATABASE: gamefinder
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      CACHE_DRIVER: redis
-      QUEUE_CONNECTION: redis
-      SESSION_DRIVER: redis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      RECOMMENDER_SERVICE_URL: http://recommender:8001
-      WAIT_FOR_GAMES_TABLE: "true"
-      SERVICE_TYPE: backend
-    ports:
-      - "8000:8000"
-    depends_on:
-      - postgres
-      - redis
-      - etl
-    restart: unless-stopped
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:80"
-    volumes:
-      - ./frontend/index.html:/usr/share/nginx/html/index.html:ro
-      - ./frontend/style.css:/usr/share/nginx/html/style.css:ro
-      - ./frontend/main.js:/usr/share/nginx/html/main.js:ro
-      - ./frontend/images:/usr/share/nginx/html/images:ro
-      - ./frontend/public:/usr/share/nginx/html/public:ro
-    depends_on:
-      - backend
-    restart: unless-stopped
+# ===========================
+# Etapa 2: PHP Application
+# ===========================
+FROM php:8.2-cli
 
-volumes:
-  postgres_data:
+# Evita prompts interativos durante o apt-get
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=xterm
+
+# Instala pacotes necessários e extensões PHP
+RUN apt-get update && apt-get install -y \
+    git unzip zip libpq-dev libzip-dev libssl-dev libpng-dev libonig-dev \
+    && docker-php-ext-install pdo pdo_pgsql zip \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copia dependências do Composer da primeira etapa
+COPY --from=vendor /app/vendor /var/www/html/vendor
+
+# Copia o restante da aplicação Laravel
+COPY backend-api /var/www/html
+
+# Define diretório de trabalho da aplicação
+WORKDIR /var/www/html
+
+# Gera APP_KEY se não existir (ignora erro se já existir)
+RUN php artisan key:generate --show || true
+
+# Expondo a porta padrão (8080)
+EXPOSE 8080
+
+# =====================================
+# 🚀 Comando de inicialização do servidor Laravel
+# =====================================
+# O Laravel vai subir diretamente na porta 8080 (fixa)
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
