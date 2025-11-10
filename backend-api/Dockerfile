@@ -1,39 +1,38 @@
+# ===========================
+# Etapa 1: Build das dependências
+# ===========================
+FROM composer:2 AS vendor
+
+WORKDIR /app
+COPY backend-api/composer.json backend-api/composer.lock ./
+RUN composer install --no-dev --no-interaction --no-progress --prefer-dist
+
+# ===========================
+# Etapa 2: Configuração do PHP
+# ===========================
 FROM php:8.2-cli
 
-ENV COMPOSER_ALLOW_SUPERUSER=1 \
-    COMPOSER_NO_INTERACTION=1
-
+# Instala extensões necessárias
 RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
-    zip \
-    build-essential \
-    libzip-dev \
-    libpq-dev \
-    libssl-dev \
-    autoconf \
-    pkg-config \
-    postgresql-client \
-    && docker-php-ext-install pdo pdo_pgsql \
+    git unzip zip libpq-dev libzip-dev libssl-dev \
+    && docker-php-ext-install pdo pdo_pgsql zip \
     && pecl install redis \
     && docker-php-ext-enable redis \
-    && rm -rf /tmp/pear \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Copia dependências do Composer
+COPY --from=vendor /app/vendor /var/www/html/vendor
+
+# Copia o restante do código da aplicação
+COPY backend-api /var/www/html
 
 WORKDIR /var/www/html
 
-COPY backend-api/composer.json backend-api/composer.lock ./
-RUN composer install --prefer-dist --no-interaction --no-progress --no-scripts
+# Gera APP_KEY se não existir
+RUN php artisan key:generate --show || true
 
-COPY backend-api/ .
+# Expõe a porta padrão do Laravel
+EXPOSE 8000
 
-RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views \
-    && chown -R www-data:www-data storage bootstrap/cache
-
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# Comando de inicialização
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=${PORT}"]
