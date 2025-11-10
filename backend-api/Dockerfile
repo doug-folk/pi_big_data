@@ -65,3 +65,17 @@ ENV DATABASE_URL=""
 EXPOSE 8080
 
 CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
+
+# ===========================
+# Expor porta 8080
+# ===========================
+EXPOSE 8080
+
+# ===========================
+# Inicialização com limpeza de cache automática
+# ===========================
+CMD sh -c "php artisan config:clear && \
+           php artisan cache:clear && \
+           php artisan route:clear && \
+           php artisan view:clear && \
+           php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
