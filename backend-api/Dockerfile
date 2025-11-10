@@ -43,16 +43,14 @@ WORKDIR /var/www/html
 RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # ===========================
-# Configuração do banco de dados PostgreSQL (Railway)
+# Configuração do banco de dados (usando variáveis do ambiente Railway)
 # ===========================
-ENV DB_CONNECTION=pgsql
-ENV DB_HOST=shinkansen.proxy.rlwy.net
-ENV DB_PORT=43572
-ENV DB_DATABASE=railway
-ENV DB_USERNAME=postgres
-ENV DB_PASSWORD=CsOQcmVGWvMNhuDFStcdTRYwsMCLJHSL
-
-# ⚠️ Sobrescreve DATABASE_URL do Railway (para evitar conflitos)
+ENV DB_CONNECTION=${DB_CONNECTION}
+ENV DB_HOST=${DB_HOST}
+ENV DB_PORT=${DB_PORT}
+ENV DB_DATABASE=${DB_DATABASE}
+ENV DB_USERNAME=${DB_USERNAME}
+ENV DB_PASSWORD=${DB_PASSWORD}
 ENV DATABASE_URL=""
 
 # ===========================
