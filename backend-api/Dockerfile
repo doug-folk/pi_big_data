@@ -50,8 +50,8 @@ RUN php artisan config:clear || true && \
 # Garante que o Laravel use apenas PostgreSQL
 # ===========================
 ENV DB_CONNECTION=pgsql
-ENV DB_HOST=caboose.proxy.rlwy.net
-ENV DB_PORT=36575
+ENV DB_HOST=shinkansen.proxy.rlwy.net
+ENV DB_PORT=43572
 ENV DB_DATABASE=railway
 ENV DB_USERNAME=postgres
 ENV DB_PASSWORD=CsOQcmVGWvMNhuDFStcdTRYwsMCLJHSL
