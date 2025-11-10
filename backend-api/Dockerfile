@@ -11,6 +11,7 @@ COPY backend-api/composer.json backend-api/composer.lock ./
 # Evita erro do artisan no build (Laravel ainda não copiado)
 RUN composer install --no-dev --no-scripts --no-interaction --no-progress --prefer-dist
 
+
 # ===========================
 # Etapa 2: PHP Application
 # ===========================
@@ -36,18 +37,31 @@ COPY backend-api /var/www/html
 
 WORKDIR /var/www/html
 
-# Agora sim executa os scripts do composer com o Laravel completo
-RUN composer dump-autoload --optimize && php artisan package:discover --ansi || true
+# ===========================
+# Corrige cache e permissões
+# ===========================
+RUN php artisan config:clear || true && \
+    php artisan cache:clear || true && \
+    php artisan route:clear || true && \
+    php artisan view:clear || true && \
+    chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Gera APP_KEY caso não exista
-RUN php artisan key:generate --show || true
+# ===========================
+# Garante conexão com o banco PostgreSQL (não SQLite)
+# ===========================
+ENV DB_CONNECTION=pgsql
+ENV DB_HOST=${DB_HOST}
+ENV DB_PORT=${DB_PORT}
+ENV DB_DATABASE=${DB_DATABASE}
+ENV DB_USERNAME=${DB_USERNAME}
+ENV DB_PASSWORD=${DB_PASSWORD}
 
-# Limpa caches e garante permissões
-RUN php artisan config:clear && php artisan cache:clear && php artisan route:clear && php artisan view:clear || true
-RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
-
+# ===========================
 # Expor porta 8080
+# ===========================
 EXPOSE 8080
 
-# Comando de inicialização
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
+# ===========================
+# Comando de inicialização (respeita variável PORT do Railway)
+# ===========================
+CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
