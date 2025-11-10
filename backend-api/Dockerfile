@@ -7,7 +7,6 @@ WORKDIR /app
 COPY backend-api/composer.json backend-api/composer.lock ./
 RUN composer install --no-dev --no-scripts --no-interaction --no-progress --prefer-dist
 
-
 # ===========================
 # Etapa 2: Aplicação Laravel (PHP 8.2)
 # ===========================
@@ -25,15 +24,18 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=vendor /app/vendor /var/www/html/vendor
 COPY backend-api /var/www/html
+
 WORKDIR /var/www/html
 
+# Permissões
 RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# ⚙️ Garante que o Laravel ignore o DATABASE_URL do Railway (ele cria o seu próprio)
+# ⚙️ Ignora DATABASE_URL do Railway (para não sobrescrever seu .env)
 ENV DATABASE_URL=""
 
 EXPOSE 8080
 
+# 🚀 Inicialização com limpeza de cache automática
 CMD sh -c "echo '🚀 Iniciando aplicação Laravel...' && \
            php artisan config:clear && \
            php artisan cache:clear && \
