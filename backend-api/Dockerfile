@@ -12,9 +12,13 @@ RUN composer install --no-dev --no-interaction --no-progress --prefer-dist
 # ===========================
 FROM php:8.2-cli
 
-# Instala extensões necessárias
+# 👇 Adiciona essas linhas para evitar o erro "unable to initialize frontend"
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TERM=xterm
+
+# Instala extensões e pacotes necessários
 RUN apt-get update && apt-get install -y \
-    git unzip zip libpq-dev libzip-dev libssl-dev \
+    git unzip zip libpq-dev libzip-dev libssl-dev libpng-dev libonig-dev \
     && docker-php-ext-install pdo pdo_pgsql zip \
     && pecl install redis \
     && docker-php-ext-enable redis \
@@ -23,16 +27,16 @@ RUN apt-get update && apt-get install -y \
 # Copia dependências do Composer
 COPY --from=vendor /app/vendor /var/www/html/vendor
 
-# Copia o restante do código da aplicação
+# Copia o código da aplicação Laravel
 COPY backend-api /var/www/html
 
 WORKDIR /var/www/html
 
-# Gera APP_KEY se não existir
+# Gera APP_KEY (não quebra se já existir)
 RUN php artisan key:generate --show || true
 
 # Expõe a porta padrão do Laravel
 EXPOSE 8000
 
 # Comando de inicialização
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=${PORT}"]
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=$PORT"]
