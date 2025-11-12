@@ -4,8 +4,7 @@
 FROM composer:2 AS vendor
 
 WORKDIR /app
-# Corrige caminho da estrutura real do projeto
-COPY PI_BIG_DATA/backend-api/composer.json PI_BIG_DATA/backend-api/composer.lock ./ 
+COPY pi_big_data/backend-api/composer.json pi_big_data/backend-api/composer.lock ./ 
 RUN composer install --no-dev --no-scripts --no-interaction --no-progress --prefer-dist
 
 
@@ -14,14 +13,14 @@ RUN composer install --no-dev --no-scripts --no-interaction --no-progress --pref
 # ===========================
 FROM node:18 AS vite
 
-WORKDIR /app/PI_BIG_DATA/backend-api
+WORKDIR /app/pi_big_data/backend-api
 
 # Copia apenas arquivos essenciais para cache eficiente
-COPY PI_BIG_DATA/backend-api/package*.json ./ 
+COPY pi_big_data/backend-api/package*.json ./ 
 RUN npm cache clean --force && npm install --legacy-peer-deps
 
 # Copia o backend (onde está o Vite configurado)
-COPY PI_BIG_DATA/backend-api ./ 
+COPY pi_big_data/backend-api ./ 
 
 # Executa build do Vite
 RUN npm run build || echo "⚠️ Falha leve no build do Vite — continuando..."
@@ -47,7 +46,7 @@ RUN apt-get update && apt-get install -y \
 COPY --from=vendor /app/vendor /var/www/html/vendor
 
 # Copia aplicação Laravel (com build do Vite incluso)
-COPY --from=vite /app/PI_BIG_DATA/backend-api /var/www/html
+COPY --from=vite /app/pi_big_data/backend-api /var/www/html
 
 WORKDIR /var/www/html
 
