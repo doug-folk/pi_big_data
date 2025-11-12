@@ -1,5 +1,5 @@
 # ===========================
-# Etapa 1: Instala dependências PHP (Composer)
+# Etapa 1: Dependências PHP (Composer)
 # ===========================
 FROM composer:2 AS vendor
 
@@ -19,15 +19,15 @@ WORKDIR /app/backend-api
 COPY backend-api/package*.json ./
 RUN npm install --legacy-peer-deps
 
-# Copia o restante da aplicação Laravel
+# Copia todo o backend Laravel (incluindo código Vite)
 COPY backend-api ./
 
-# Compila o frontend com Vite
+# Executa build do Vite
 RUN npm run build
 
 
 # ===========================
-# Etapa 3: Aplicação PHP (Laravel)
+# Etapa 3: Aplicação Laravel (PHP)
 # ===========================
 FROM php:8.2-cli
 
@@ -45,7 +45,7 @@ RUN apt-get update && apt-get install -y \
 # Copia dependências do Composer
 COPY --from=vendor /app/vendor /var/www/html/vendor
 
-# Copia a aplicação Laravel (já com build do Vite incluído)
+# Copia aplicação Laravel (já com build do Vite incluso)
 COPY --from=vite /app/backend-api /var/www/html
 
 WORKDIR /var/www/html
@@ -63,5 +63,6 @@ RUN php artisan config:clear || true && \
 
 EXPOSE 8080
 
-# Inicia o servidor
+# Inicia o servidor Laravel
 CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
+RUN chmod -R 777 storage bootstrap/cache public
