@@ -3,11 +3,13 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\GameController;
 
-Route::middleware([])->group(function() {
+Route::middleware([])->group(function () {
     // Busca por texto
     Route::get('games/search', [GameController::class, 'search']);
     // Descoberta aleatória
     Route::get('games/discover', [GameController::class, 'discover']);
+    // Buscar filtros disponíveis (gêneros e categorias)
+    Route::get('games/filters', [GameController::class, 'getFilters']);
     // Detalhes de um jogo
     Route::get('games/{id}', [GameController::class, 'show']);
     // Lista todos os jogos
@@ -20,4 +22,3 @@ Route::middleware([])->group(function() {
     Route::get('games/discover/random', [GameController::class, 'discoverRandom']);
     Route::get('games/discover/by-cluster/{game_id}', [GameController::class, 'discoverByCluster']);
 });
-

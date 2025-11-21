@@ -63,7 +63,7 @@ nav ul {
 }
 
 .nav-link {
-    color: #333;
+    color:white !important;
     text-decoration: none;
     font-weight: 500;
     padding: 0.5rem 1rem;

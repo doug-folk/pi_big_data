@@ -222,9 +222,13 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
 
     async fetchAndDisplayGames(url) {
         try {
+            console.log('[fetchAndDisplayGames] URL:', url);
             const response = await fetch(url);
+            console.log('[fetchAndDisplayGames] Response status:', response.status);
+            
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
+            console.log('[fetchAndDisplayGames] Data received:', data);
 
             // Pega o array de jogos, seja paginado ou não
             let games = [];
@@ -236,11 +240,19 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
                 games = data.data.data;
             }
 
+            console.log('[fetchAndDisplayGames] Games extracted:', games.length, 'games');
+            
+            if (games.length === 0) {
+                this.showError('Nenhum jogo encontrado.');
+                this.hideLoading();
+                return;
+            }
+
             this.currentGames = games;
             this.displayGames(this.currentGames);
             this.hideLoading();
         } catch (error) {
-            console.error('API error:', error);
+            console.error('[fetchAndDisplayGames] Error:', error);
             this.showError('Erro ao carregar jogos. Tente novamente.');
             this.hideLoading();
         }
@@ -303,15 +315,11 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
         const gameCard = document.createElement('div');
         gameCard.className = 'game-card';
         const hasValidUrl = this.isValidExternalUrl(game.url);
+        const validImageUrl = this.isValidExternalUrl(game.image_url) ? game.image_url : null;
 
-        if (hasValidUrl) {
-            gameCard.onclick = () => window.open(game.url, "_blank");
-            gameCard.style.cursor = 'pointer';
-        } else {
-            gameCard.onclick = null;
-            gameCard.style.cursor = 'default';
-            gameCard.classList.add('no-link');
-        }
+        // Armazena o game no dataset do card
+        gameCard.dataset.gameData = JSON.stringify(game);
+        gameCard.style.cursor = 'pointer';
 
         let tags = [];
         if (Array.isArray(game.tags)) {
@@ -321,13 +329,41 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
         }
 
         gameCard.innerHTML = `
-            <div class="game-icon"><i class="fas fa-gamepad"></i></div>
-            <div class="game-title">${game.title || game.name}</div>
-            <div class="game-tags">
-                ${tags.map(tag => `<span class="tag">${tag}</span>`).join("")}
+            <div class="game-image-container">
+                ${validImageUrl ? 
+                    `<img src="${validImageUrl}" alt="${game.title || game.name}" class="game-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="game-icon-fallback" style="display: none;"><i class="fas fa-gamepad"></i></div>` :
+                    `<div class="game-icon-fallback"><i class="fas fa-gamepad"></i></div>`
+                }
+                <div class="game-overlay">
+                    <button class="view-details-btn">
+                        <i class="fas fa-info-circle"></i> Ver Detalhes
+                    </button>
+                </div>
             </div>
-            ${hasValidUrl ? '' : '<div class="link-warning">Link indisponível</div>'}
+            <div class="game-content">
+                <div class="game-title">${game.title || game.name}</div>
+                <div class="game-tags">
+                    ${tags.map(tag => `<span class="tag">${tag}</span>`).join("")}
+                </div>
+                ${!hasValidUrl ? '<div class="link-warning"><i class="fas fa-ban"></i> Link indisponível</div>' : ''}
+            </div>
         `;
+        
+        // Adiciona event listener para o botão de detalhes
+        const detailsBtn = gameCard.querySelector('.view-details-btn');
+        detailsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showGameDetails(game);
+        });
+        
+        // Adiciona clique no card inteiro (se tiver URL válida)
+        if (hasValidUrl) {
+            gameCard.addEventListener('click', () => window.open(game.url, "_blank"));
+        } else {
+            gameCard.addEventListener('click', () => this.showGameDetails(game));
+        }
+        
         return gameCard;
     }
 
@@ -373,7 +409,7 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
                     </div>
                 `}
                 <div style="margin-top: 1rem;">
-                    <button class="action-btn" onclick="gameFinder.findSimilarGamesById(${game.id})">
+                    <button class="action-btn find-similar-modal-btn" data-game-id="${game.id}">
                         <i class="fas fa-search-plus"></i>
                         Encontrar Similares
                     </button>
@@ -382,16 +418,27 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
         `;
 
         modal.classList.remove('hidden');
+        
+        // Adiciona event listener para o botão de similares no modal
+        const similarBtn = modalBody.querySelector('.find-similar-modal-btn');
+        if (similarBtn) {
+            similarBtn.addEventListener('click', () => {
+                this.findSimilarGamesById(game.id);
+            });
+        }
     }
 
     async findSimilarGamesById(gameId) {
         this.closeModal();
+        this.switchSection('recommendations');
         this.showLoading();
         try {
             const url = `${this.API_BASE_URL}/games/recommend/for-game/${gameId}?top_n=12`;
             await this.fetchAndDisplayGames(url);
         } catch (error) {
+            console.error('[findSimilarGamesById] Error:', error);
             this.showError('Erro ao buscar jogos similares.');
+            this.hideLoading();
         }
     }
 
@@ -497,21 +544,92 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
 
     async loadFiltersData() {
         try {
-            // Carregar todos os jogos para extrair gêneros e categorias únicos
-            const response = await fetch(`${this.API_BASE_URL}/games`);
-            if (response.ok) {
-                const data = await response.json();
-                const games = data.data || [];
-                
-                this.populateFilters(games);
-            }
+            console.log('[loadFiltersData] Carregando filtros simplificados...');
+            
+            // Gêneros principais simplificados
+            const mainGenres = [
+                { value: 'Action', label: 'Ação' },
+                { value: 'Adventure', label: 'Aventura' },
+                { value: 'RPG', label: 'RPG' },
+                { value: 'Strategy', label: 'Estratégia' },
+                { value: 'Simulation', label: 'Simulação' },
+                { value: 'Sports', label: 'Esportes' },
+                { value: 'Racing', label: 'Corrida' },
+                { value: 'Indie', label: 'Indie' },
+                { value: 'Casual', label: 'Casual' },
+                { value: 'Massively Multiplayer', label: 'Multiplayer' }
+            ];
+            
+            console.log('[loadFiltersData] Usando', mainGenres.length, 'gêneros principais');
+            this.populateMainGenres(mainGenres);
         } catch (error) {
-            console.log('Usando filtros padrão devido a erro na API:', error);
-            // Manter filtros padrão se a API não estiver disponível
+            console.error('[loadFiltersData] Erro ao carregar filtros:', error);
         }
     }
 
+    populateMainGenres(mainGenres) {
+        console.log('[populateMainGenres] Populando gêneros principais...');
+
+        // Atualizar select de gêneros
+        const genreSelect = document.getElementById('genre-filter');
+        if (!genreSelect) {
+            console.error('[populateMainGenres] Elemento genre-filter não encontrado!');
+            return;
+        }
+        
+        genreSelect.innerHTML = '<option value="">Todos os gêneros</option>';
+        mainGenres.forEach(genre => {
+            const option = document.createElement('option');
+            option.value = genre.value;
+            option.textContent = genre.label;
+            genreSelect.appendChild(option);
+        });
+        
+        console.log('[populateMainGenres] genre-filter populado com', genreSelect.options.length, 'opções');
+    }
+
+    populateFiltersFromData(genres, categories) {
+        console.log('[populateFiltersFromData] Populando filtros...');
+        console.log('[populateFiltersFromData] Gêneros recebidos:', genres.length);
+        console.log('[populateFiltersFromData] Primeiros gêneros:', genres.slice(0, 10));
+
+        // Atualizar select de gêneros
+        const genreSelect = document.getElementById('genre-filter');
+        if (!genreSelect) {
+            console.error('[populateFiltersFromData] Elemento genre-filter não encontrado!');
+            return;
+        }
+        
+        genreSelect.innerHTML = '<option value="">Todos os gêneros</option>';
+        genres.forEach(genre => {
+            const option = document.createElement('option');
+            option.value = genre;
+            option.textContent = genre;
+            genreSelect.appendChild(option);
+        });
+        
+        console.log('[populateFiltersFromData] genre-filter populado com', genreSelect.options.length, 'opções');
+
+        // Atualizar select de categorias
+        const categorySelect = document.getElementById('category-filter');
+        if (!categorySelect) {
+            console.error('[populateFiltersFromData] Elemento category-filter não encontrado!');
+            return;
+        }
+        
+        categorySelect.innerHTML = '<option value="">Todas as categorias</option>';
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            categorySelect.appendChild(option);
+        });
+        
+        console.log('[populateFiltersFromData] category-filter populado com', categorySelect.options.length, 'opções');
+    }
+
     populateFilters(games) {
+        console.log('[populateFilters] Processando', games.length, 'jogos');
         const genres = new Set();
         const categories = new Set();
 
@@ -534,8 +652,17 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
             }
         });
 
+        console.log('[populateFilters] Gêneros únicos encontrados:', genres.size);
+        console.log('[populateFilters] Gêneros:', Array.from(genres).slice(0, 10));
+        console.log('[populateFilters] Categorias únicas encontradas:', categories.size);
+
         // Atualizar select de gêneros
         const genreSelect = document.getElementById('genre-filter');
+        if (!genreSelect) {
+            console.error('[populateFilters] Elemento genre-filter não encontrado!');
+            return;
+        }
+        
         genreSelect.innerHTML = '<option value="">Todos os gêneros</option>';
         Array.from(genres).sort().forEach(genre => {
             const option = document.createElement('option');
@@ -543,9 +670,16 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
             option.textContent = genre;
             genreSelect.appendChild(option);
         });
+        
+        console.log('[populateFilters] genre-filter populado com', genreSelect.options.length, 'opções');
 
         // Atualizar select de categorias
         const categorySelect = document.getElementById('category-filter');
+        if (!categorySelect) {
+            console.error('[populateFilters] Elemento category-filter não encontrado!');
+            return;
+        }
+        
         categorySelect.innerHTML = '<option value="">Todas as categorias</option>';
         Array.from(categories).sort().forEach(category => {
             const option = document.createElement('option');
@@ -553,6 +687,8 @@ document.getElementById('find-cluster-btn').addEventListener('click', async () =
             option.textContent = category;
             categorySelect.appendChild(option);
         });
+        
+        console.log('[populateFilters] category-filter populado com', categorySelect.options.length, 'opções');
     }
 }
 

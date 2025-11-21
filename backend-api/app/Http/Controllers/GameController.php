@@ -129,8 +129,16 @@ class GameController extends Controller
                     }
 
                     if (!empty($reference->tags)) {
-                        $query->orWhere('tags', 'like', "%{$reference->tags}%");
-                        $hasCondition = true;
+                        // tags pode ser array ou string JSON
+                        $tags = is_array($reference->tags) ? $reference->tags : json_decode($reference->tags, true);
+                        if ($tags && is_array($tags)) {
+                            foreach ($tags as $tag) {
+                                if (!empty($tag)) {
+                                    $query->orWhere('tags', 'like', "%{$tag}%");
+                                }
+                            }
+                            $hasCondition = true;
+                        }
                     }
 
                     if (!$hasCondition) {
@@ -319,5 +327,54 @@ class GameController extends Controller
             ->inRandomOrder()
             ->limit(max($limit, 1))
             ->get();
+    }
+
+    public function getFilters()
+    {
+        // Buscar todos os gêneros únicos
+        $genres = Game::query()
+            ->select('genre')
+            ->whereNotNull('genre')
+            ->where('genre', '!=', '')
+            ->distinct()
+            ->get()
+            ->pluck('genre')
+            ->flatMap(function ($genreString) {
+                return collect(explode(',', $genreString))
+                    ->map(fn($g) => trim($g))
+                    ->filter();
+            })
+            ->unique()
+            ->sort()
+            ->values();
+
+        // Buscar todas as categorias únicas
+        $categories = Game::query()
+            ->select('categoria')
+            ->whereNotNull('categoria')
+            ->where('categoria', '!=', '')
+            ->where('categoria', '!=', '[]')
+            ->distinct()
+            ->get()
+            ->pluck('categoria')
+            ->flatMap(function ($catString) {
+                try {
+                    $cats = json_decode($catString, true);
+                    if (is_array($cats)) {
+                        return collect($cats)->map(fn($c) => trim($c))->filter();
+                    }
+                } catch (\Exception $e) {
+                    return [];
+                }
+                return [];
+            })
+            ->unique()
+            ->sort()
+            ->values();
+
+        return response()->json([
+            'genres' => $genres,
+            'categories' => $categories
+        ]);
     }
 }

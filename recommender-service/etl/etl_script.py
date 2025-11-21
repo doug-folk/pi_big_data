@@ -60,6 +60,24 @@ def sanitize_url(val):
             return trimmed
     return None
 
+def extract_steam_app_id(url):
+    """Extrai o App ID da URL da Steam"""
+    if not url or not isinstance(url, str):
+        return None
+    # Padrão: https://store.steampowered.com/app/123456/...
+    match = re.search(r'steampowered\.com/app/(\d+)', url)
+    if match:
+        return match.group(1)
+    return None
+
+def generate_steam_image_url(url):
+    """Gera URL de imagem da Steam baseada na URL do jogo"""
+    app_id = extract_steam_app_id(url)
+    if app_id:
+        # URL padrão de header da Steam
+        return f"https://cdn.akamai.steamstatic.com/steam/apps/{app_id}/header.jpg"
+    return None
+
 def normalize_scalar_value(val):
     if val is None:
         return 'Unknown'
@@ -126,7 +144,8 @@ def main():
     final_games['genre'] = unified_df['genre']
     final_games['categoria'] = unified_df['category'].apply(lambda x: json.dumps(ensure_list(x)) if x else json.dumps(['Unknown']))
     final_games['tags'] = unified_df['popular_tags'].apply(lambda x: json.dumps(ensure_list(x)) if x else json.dumps(['Unknown']))
-    final_games['image_url'] = unified_df['image_url'].apply(sanitize_url)
+    # Gera URLs de imagem da Steam baseadas na URL do jogo
+    final_games['image_url'] = unified_df['url'].apply(generate_steam_image_url)
     final_games['normalized_name'] = unified_df['normalized_name']
     final_games.reset_index(drop=True, inplace=True)
     final_games.insert(0, 'id', final_games.index)
@@ -139,11 +158,14 @@ def main():
         final_games[col] = final_games[col].apply(normalize_scalar_value)
 
     final_games['url'] = final_games['url'].apply(sanitize_url)
-    final_games['image_url'] = final_games['image_url'].apply(sanitize_url)
+    # image_url já está gerada, apenas garantir que seja válida
+    # final_games['image_url'] já tem valores
 
     valid_url_count = final_games['url'].notna().sum()
     missing_url_count = len(final_games) - valid_url_count
+    valid_image_count = final_games['image_url'].notna().sum()
     print(f"URLs válidas: {valid_url_count}. Registros sem URL: {missing_url_count}.")
+    print(f"Imagens válidas: {valid_image_count}.")
     print(f"Transformação concluída. {len(final_games)} jogos únicos.")
     print(final_games.head())
     for start in range(0, len(final_games), 200):
